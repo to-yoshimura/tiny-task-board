@@ -53,3 +53,5 @@ npm test
 ```sh
 npm run verify
 ```
+
+GitHub Actionsでも、`main`へのpushと`main`を対象とするpull requestのたびに同じ検証を自動実行します。
