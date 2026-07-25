@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export type Task = {
   id: string;
   title: string;
@@ -6,6 +8,7 @@ export type Task = {
 
 export type TaskStore = {
   getAll(): readonly Task[];
+  add(title: string): Task;
 };
 
 export function createInMemoryTaskStore(
@@ -16,6 +19,16 @@ export function createInMemoryTaskStore(
   return {
     getAll() {
       return tasks;
+    },
+    add(title) {
+      const task = {
+        id: randomUUID(),
+        title,
+        completed: false,
+      };
+
+      tasks.push(task);
+      return task;
     },
   };
 }
