@@ -9,6 +9,7 @@ export type Task = {
 export type TaskStore = {
   getAll(): readonly Task[];
   add(title: string): Task;
+  complete(id: string): Task | undefined;
 };
 
 export function createInMemoryTaskStore(
@@ -29,6 +30,21 @@ export function createInMemoryTaskStore(
 
       tasks.push(task);
       return task;
+    },
+    complete(id) {
+      const taskIndex = tasks.findIndex((task) => task.id === id);
+
+      if (taskIndex === -1) {
+        return undefined;
+      }
+
+      const completedTask = {
+        ...tasks[taskIndex],
+        completed: true,
+      };
+
+      tasks[taskIndex] = completedTask;
+      return completedTask;
     },
   };
 }

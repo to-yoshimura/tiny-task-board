@@ -28,8 +28,23 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       tasks.length === 0
         ? "<p>No tasks yet.</p>"
         : `<ul>
-${tasks.map((task) => `      <li>${escapeHtml(task.title)}</li>`).join("\n")}
+${tasks
+  .map((task) => {
+    const title = escapeHtml(task.title);
+    return task.completed
+      ? `      <li data-completed="true"><s>${title}</s></li>`
+      : `      <li>${title}</li>`;
+  })
+  .join("\n")}
     </ul>`;
+    const taskActions = tasks
+      .filter((task) => !task.completed)
+      .map((task) => {
+        const id = escapeHtml(task.id);
+        const title = escapeHtml(task.title);
+        return `      <button type="button" data-complete-task-id="${id}">Complete ${title}</button>`;
+      })
+      .join("\n");
 
     return reply.type("text/html; charset=utf-8").send(`<!doctype html>
 <html lang="ja">
@@ -46,11 +61,15 @@ ${tasks.map((task) => `      <li>${escapeHtml(task.title)}</li>`).join("\n")}
       <p id="task-error" role="alert"></p>
     </form>
     ${taskList}
+${taskActions}
     <script type="module">
       const form = document.querySelector("#task-form");
       const titleInput = document.querySelector("#task-title");
       const submitButton = form.querySelector('button[type="submit"]');
       const errorMessage = document.querySelector("#task-error");
+      const completeButtons = document.querySelectorAll(
+        "[data-complete-task-id]",
+      );
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -88,6 +107,43 @@ ${tasks.map((task) => `      <li>${escapeHtml(task.title)}</li>`).join("\n")}
           submitButton.disabled = false;
         }
       });
+
+      completeButtons.forEach((button) => {
+        button.addEventListener("click", async () => {
+          const taskId = button.dataset.completeTaskId;
+
+          if (!taskId) {
+            return;
+          }
+
+          button.disabled = true;
+          errorMessage.textContent = "";
+
+          try {
+            const response = await fetch(
+              \`/tasks/\${encodeURIComponent(taskId)}\`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ completed: true }),
+              },
+            );
+
+            if (!response.ok) {
+              errorMessage.textContent = "Could not complete task.";
+              return;
+            }
+
+            window.location.reload();
+          } catch {
+            errorMessage.textContent = "Could not complete task.";
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
     </script>
   </body>
 </html>`);
@@ -119,6 +175,32 @@ ${tasks.map((task) => `      <li>${escapeHtml(task.title)}</li>`).join("\n")}
 
     return reply.code(201).send(task);
   });
+
+  app.patch<{ Params: { id: string } }>(
+    "/tasks/:id",
+    async (request, reply) => {
+      const body: unknown = request.body;
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("completed" in body) ||
+        body.completed !== true
+      ) {
+        return reply
+          .code(400)
+          .send({ error: "Completed must be true" });
+      }
+
+      const task = taskStore.complete(request.params.id);
+
+      if (task === undefined) {
+        return reply.code(404).send({ error: "Task not found" });
+      }
+
+      return reply.code(200).send(task);
+    },
+  );
 
   app.get("/health", async () => {
     return { status: "ok" };

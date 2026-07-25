@@ -30,6 +30,17 @@ Given(
   },
 );
 
+Given(
+  "利用者がタスクボードを開いている",
+  async function (this: TaskBoardWorld) {
+    this.app = buildApp({ initialTasks: this.initialTasks });
+    this.response = await this.app.inject({
+      method: "GET",
+      url: "/",
+    });
+  },
+);
+
 When(
   "利用者がタスクボードを開く",
   async function (this: TaskBoardWorld) {
@@ -49,6 +60,26 @@ When(
       method: "POST",
       url: "/tasks",
       payload: { title },
+    });
+  },
+);
+
+When(
+  "利用者が {string} を完了にする",
+  async function (this: TaskBoardWorld, title: string) {
+    assert.ok(this.app, "Fastifyアプリケーションがありません");
+
+    const task = this.initialTasks.find(
+      (initialTask) =>
+        initialTask.title === title && !initialTask.completed,
+    );
+
+    assert.ok(task, `"${title}" という未完了タスクがありません`);
+
+    this.response = await this.app.inject({
+      method: "PATCH",
+      url: `/tasks/${task.id}`,
+      payload: { completed: true },
     });
   },
 );
@@ -85,6 +116,48 @@ Then(
     assert.ok(
       this.response.body.includes(title),
       `レスポンスに "${title}" が含まれていません`,
+    );
+  },
+);
+
+Then(
+  "{string} が完了済みとして表示される",
+  async function (this: TaskBoardWorld, title: string) {
+    assert.ok(this.app, "Fastifyアプリケーションがありません");
+    assert.ok(this.response, "タスク完了のレスポンスがありません");
+    assert.equal(this.response.statusCode, 200);
+
+    const initialTask = this.initialTasks.find(
+      (task) => task.title === title,
+    );
+
+    assert.ok(initialTask, `"${title}" というタスクがありません`);
+
+    const completedTask = this.response.json<Task>();
+
+    assert.equal(completedTask.id, initialTask.id);
+    assert.equal(completedTask.title, title);
+    assert.equal(completedTask.completed, true);
+
+    this.response = await this.app.inject({
+      method: "GET",
+      url: "/",
+    });
+
+    assert.ok(
+      this.response.body.includes(`<s>${title}</s>`),
+      `"${title}" が完了済みとして表示されていません`,
+    );
+  },
+);
+
+Then(
+  "{string} は未完了として表示されない",
+  function (this: TaskBoardWorld, title: string) {
+    assert.ok(this.response, "GET / のレスポンスがありません");
+    assert.ok(
+      !this.response.body.includes(`<li>${title}</li>`),
+      `"${title}" が未完了として表示されています`,
     );
   },
 );

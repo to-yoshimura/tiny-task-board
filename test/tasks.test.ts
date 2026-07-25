@@ -55,6 +55,40 @@ describe("GET / with tasks", () => {
       await appWithUnsafeTitle.close();
     }
   });
+
+  it("marks completed tasks in HTML without changing incomplete tasks", async () => {
+    const appWithTaskStates = buildApp({
+      initialTasks: [
+        {
+          id: "task-1",
+          title: "Read Continuous Delivery",
+          completed: false,
+        },
+        {
+          id: "task-2",
+          title: '<script>alert("xss")</script>',
+          completed: true,
+        },
+      ],
+    });
+
+    try {
+      const response = await appWithTaskStates.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(response.body).toContain(
+        "<li>Read Continuous Delivery</li>",
+      );
+      expect(response.body).toContain(
+        '<li data-completed="true"><s>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</s></li>',
+      );
+      expect(response.body).not.toContain("<script>alert");
+    } finally {
+      await appWithTaskStates.close();
+    }
+  });
 });
 
 describe("POST /tasks", () => {
@@ -121,6 +155,135 @@ describe("POST /tasks", () => {
       });
 
       expect(page.body).toContain("No tasks yet.");
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+describe("PATCH /tasks/:id", () => {
+  it("completes an existing task and shows it as completed", async () => {
+    const initialTask = {
+      id: "task-1",
+      title: "Write deployment pipeline",
+      completed: false,
+    };
+    const app = buildApp({
+      initialTasks: [initialTask],
+    });
+
+    try {
+      expect(initialTask.completed).toBe(false);
+
+      const pageBeforeUpdate = await app.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(pageBeforeUpdate.body).toContain(
+        "<li>Write deployment pipeline</li>",
+      );
+      expect(pageBeforeUpdate.body).not.toContain(
+        "<s>Write deployment pipeline</s>",
+      );
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: "/tasks/task-1",
+        payload: {
+          completed: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toMatch(/^application\/json\b/);
+      expect(response.json()).toEqual({
+        id: "task-1",
+        title: "Write deployment pipeline",
+        completed: true,
+      });
+
+      const pageAfterUpdate = await app.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(pageAfterUpdate.body).toContain(
+        "<s>Write deployment pipeline</s>",
+      );
+      expect(pageAfterUpdate.body).not.toContain(
+        "<li>Write deployment pipeline</li>",
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("returns 404 without changing an existing task when the id is unknown", async () => {
+    const app = buildApp({
+      initialTasks: [
+        {
+          id: "task-1",
+          title: "Write deployment pipeline",
+          completed: false,
+        },
+      ],
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: "/tasks/missing-task",
+        payload: {
+          completed: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      const page = await app.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(page.body).toContain("<li>Write deployment pipeline</li>");
+      expect(page.body).not.toContain("<s>Write deployment pipeline</s>");
+    } finally {
+      await app.close();
+    }
+  });
+
+  it.each([
+    ["a missing completed value", {}],
+    ["a non-boolean completed value", { completed: "true" }],
+    ["completed set to false", { completed: false }],
+  ])("rejects %s without changing the task", async (_caseName, payload) => {
+    const app = buildApp({
+      initialTasks: [
+        {
+          id: "task-1",
+          title: "Write deployment pipeline",
+          completed: false,
+        },
+      ],
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: "/tasks/task-1",
+        payload,
+      });
+
+      expect(response.statusCode).toBe(400);
+
+      const page = await app.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(page.body).toContain("<li>Write deployment pipeline</li>");
+      expect(page.body).not.toContain("<s>Write deployment pipeline</s>");
     } finally {
       await app.close();
     }

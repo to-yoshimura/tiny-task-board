@@ -19,6 +19,13 @@ Feature: タスク一覧の表示
     And タスクボードを開くと "Write deployment pipeline" と表示される
     And "No tasks yet." は表示されない
 
+  Scenario: 未完了タスクを完了する
+    Given "Write deployment pipeline" という未完了タスクが存在する
+    And 利用者がタスクボードを開いている
+    When 利用者が "Write deployment pipeline" を完了にする
+    Then "Write deployment pipeline" が完了済みとして表示される
+    And "Write deployment pipeline" は未完了として表示されない
+
   @e2e
   Scenario: 画面から新しいタスクを登録する
     Given 利用者が空のタスクボードを開いている
