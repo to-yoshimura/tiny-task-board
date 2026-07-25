@@ -6,17 +6,19 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run test",
     "test:bdd": "cucumber-js",
+    "test:e2e": "playwright test",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/src/server.js",
-    "verify": "npm run typecheck && npm test && npm run test:bdd && npm run build"
+    "verify": "npm run typecheck && npm test && npm run test:bdd && npm run build && npm run test:e2e"
   },
   "dependencies": {
     "fastify": "^5.10.0"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.6.0",
+    "@playwright/test": "^1.62.0",
     "@types/node": "^26.1.1",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
