@@ -56,3 +56,73 @@ describe("GET / with tasks", () => {
     }
   });
 });
+
+describe("POST /tasks", () => {
+  it("creates an incomplete task and shows it on the task board", async () => {
+    const app = buildApp();
+
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/tasks",
+        payload: {
+          title: "Write deployment pipeline",
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.headers["content-type"]).toMatch(/^application\/json\b/);
+
+      const task = response.json<{
+        id: string;
+        title: string;
+        completed: boolean;
+      }>();
+
+      expect(task).toEqual({
+        id: expect.any(String),
+        title: "Write deployment pipeline",
+        completed: false,
+      });
+      expect(task.id).not.toBe("");
+
+      const page = await app.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(page.body).toContain("Write deployment pipeline");
+      expect(page.body).not.toContain("No tasks yet.");
+    } finally {
+      await app.close();
+    }
+  });
+
+  it.each([
+    ["an empty title", { title: "" }],
+    ["a whitespace-only title", { title: "   " }],
+    ["a missing title", {}],
+    ["a non-string title", { title: 42 }],
+  ])("rejects %s without creating a task", async (_caseName, payload) => {
+    const app = buildApp();
+
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/tasks",
+        payload,
+      });
+
+      expect(response.statusCode).toBe(400);
+
+      const page = await app.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(page.body).toContain("No tasks yet.");
+    } finally {
+      await app.close();
+    }
+  });
+});

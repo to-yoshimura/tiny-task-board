@@ -44,6 +44,33 @@ ${tasks.map((task) => `      <li>${escapeHtml(task.title)}</li>`).join("\n")}
 </html>`);
   });
 
+  app.post("/tasks", async (request, reply) => {
+    const body: unknown = request.body;
+
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("title" in body) ||
+      typeof body.title !== "string"
+    ) {
+      return reply
+        .code(400)
+        .send({ error: "Title must be a non-empty string" });
+    }
+
+    const title = body.title.trim();
+
+    if (title === "") {
+      return reply
+        .code(400)
+        .send({ error: "Title must be a non-empty string" });
+    }
+
+    const task = taskStore.add(title);
+
+    return reply.code(201).send(task);
+  });
+
   app.get("/health", async () => {
     return { status: "ok" };
   });
