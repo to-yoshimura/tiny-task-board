@@ -46,6 +46,16 @@ npm test
 
 テストはFastifyの`inject()`を使用するため、ネットワークポートを開きません。
 
+## 受け入れテスト
+
+`features/task-list.feature`は、利用者視点でタスク一覧の振る舞いを記述したGherkin形式の受け入れ仕様です。次のコマンドでCucumberを実行できます。
+
+```sh
+npm run test:bdd
+```
+
+Vitestは個々のHTTPの振る舞いを直接検証し、Cucumberは利用者視点のシナリオを検証します。Cucumberの受け入れテストは`npm run verify`にも含まれます。
+
 ## 検証方法
 
 型チェック、テスト、ビルドを順番に実行します。
