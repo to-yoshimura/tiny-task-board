@@ -1,0 +1,58 @@
+import { afterAll, describe, expect, it } from "vitest";
+
+import { buildApp } from "../src/app.js";
+
+const app = buildApp({
+  initialTasks: [
+    {
+      id: "task-1",
+      title: "Read Continuous Delivery",
+      completed: false,
+    },
+  ],
+});
+
+afterAll(async () => {
+  await app.close();
+});
+
+describe("GET / with tasks", () => {
+  it("shows existing tasks instead of the empty state", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/^text\/html\b/);
+    expect(response.body).toContain("<h1>Tiny Task Board</h1>");
+    expect(response.body).toContain("Read Continuous Delivery");
+    expect(response.body).not.toContain("No tasks yet.");
+  });
+
+  it("escapes task titles in HTML", async () => {
+    const appWithUnsafeTitle = buildApp({
+      initialTasks: [
+        {
+          id: "task-1",
+          title: '<script>alert("xss")</script>',
+          completed: false,
+        },
+      ],
+    });
+
+    try {
+      const response = await appWithUnsafeTitle.inject({
+        method: "GET",
+        url: "/",
+      });
+
+      expect(response.body).not.toContain("<script>");
+      expect(response.body).toContain(
+        "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;",
+      );
+    } finally {
+      await appWithUnsafeTitle.close();
+    }
+  });
+});
