@@ -12,6 +12,7 @@ export function buildApp(): FastifyInstance {
   </head>
   <body>
     <h1>Tiny Task Board</h1>
+    <p>No tasks yet.</p>
   </body>
 </html>`);
   });

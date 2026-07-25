@@ -19,4 +19,16 @@ describe("GET /", () => {
     expect(response.headers["content-type"]).toMatch(/^text\/html\b/);
     expect(response.body).toContain("<h1>Tiny Task Board</h1>");
   });
+
+  it("shows an empty task list", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/^text\/html\b/);
+    expect(response.body).toContain("<h1>Tiny Task Board</h1>");
+    expect(response.body).toContain("No tasks yet.");
+  });
 });
