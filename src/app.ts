@@ -39,7 +39,56 @@ ${tasks.map((task) => `      <li>${escapeHtml(task.title)}</li>`).join("\n")}
   </head>
   <body>
     <h1>Tiny Task Board</h1>
+    <form id="task-form">
+      <label for="task-title">Task title</label>
+      <input id="task-title" name="title" type="text" required>
+      <button type="submit">Add task</button>
+      <p id="task-error" role="alert"></p>
+    </form>
     ${taskList}
+    <script type="module">
+      const form = document.querySelector("#task-form");
+      const titleInput = document.querySelector("#task-title");
+      const submitButton = form.querySelector('button[type="submit"]');
+      const errorMessage = document.querySelector("#task-error");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const title = titleInput.value.trim();
+
+        if (title === "") {
+          errorMessage.textContent = "Enter a task title.";
+          titleInput.focus();
+          return;
+        }
+
+        submitButton.disabled = true;
+        errorMessage.textContent = "";
+
+        try {
+          const response = await fetch("/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ title }),
+          });
+
+          if (!response.ok) {
+            errorMessage.textContent = "Could not add task.";
+            return;
+          }
+
+          titleInput.value = "";
+          window.location.reload();
+        } catch {
+          errorMessage.textContent = "Could not add task.";
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
   </body>
 </html>`);
   });
